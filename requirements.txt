@@ -1,5 +1,3 @@
-fastapi
-uvicorn
 streamlit
 pandas
 scikit-learn
@@ -7,4 +5,3 @@ requests
 numpy
 xlsxwriter
 openpyxl
-python-multipart
