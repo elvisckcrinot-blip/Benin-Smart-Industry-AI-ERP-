@@ -1,29 +1,10 @@
-# --- Python ---
 __pycache__/
 *.py[cod]
-*$py.class
 .venv
 venv/
-ENV/
-
-# --- Environnement & Secrets ---
 .env
-.flaskenv
-
-# --- IA & Machine Learning ---
-# On ne versionne pas les modèles entraînés (trop lourds)
 *.joblib
 *.pkl
-*.h5
-
-# --- Données (Data) ---
-# On ignore les datasets CSV volumineux ou confidentiels
 data/*.csv
 data/*.xlsx
-
-# --- IDE (VS Code / PyCharm) ---
-.vscode/
-.idea/
-
-# --- Streamlit ---
 .streamlit/
