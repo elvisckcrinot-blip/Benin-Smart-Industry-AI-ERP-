@@ -1,9 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from core.incoterms import incoterms_data
 from modules.achat.tax_benin import calculer_fiscalite_benin
 from modules.achat.simulateur import comparer_offres_incoterms
 from modules.achat.ao_analyzer import scanner_ao
 from modules.wms.stock_ai import ia_prevision_demande, analyse_abc_stocks
+from modules.wms.inventory_logic import (
+    tri_stocks_fefo, 
+    tri_stocks_fifo, 
+    alerte_peremption, 
+    generer_export_stock,
+    appliquer_priorite_abc
+)
 
 app = FastAPI(title="Benin Smart Industry AI-ERP")
 
@@ -29,18 +36,42 @@ def get_comparatif(prix: float, fret: float, assurance: float, cat: int):
 def post_analyse_ao(document_text: str, budget: float):
     return scanner_ao(document_text, budget)
 
-# --- MODULE 2 : WMS (STOCKS & IA) ---
+# --- MODULE 2 : WMS (STOCKS, IA & LOGIQUE) ---
 
 @app.post("/wms/prevision-demande")
 def post_prevision_stock(historique: list, futur: dict):
-    """Calcule la demande future via Random Forest"""
     prediction = ia_prevision_demande(historique, futur)
     return {"demande_estimee": prediction}
 
 @app.post("/wms/analyse-abc")
 def post_analyse_abc(donnees_produits: list):
-    """Classe les articles en categories A, B ou C"""
     return analyse_abc_stocks(donnees_produits)
+
+@app.post("/wms/flux-fefo")
+def get_flux_fefo(inventaire: list, donnees_abc: list = None):
+    """Renvoie l inventaire trie par peremption avec priorite ABC optionnelle"""
+    stock_trie = tri_stocks_fefo(inventaire)
+    if donnees_abc:
+        stock_trie = appliquer_priorite_abc(donnees_abc, stock_trie)
+    return stock_trie
+
+@app.post("/wms/alertes")
+def get_alertes_stock(inventaire: list, jours: int = 30):
+    """Liste les produits proches de la date de peremption"""
+    return alerte_peremption(inventaire, jours)
+
+@app.post("/wms/export-excel")
+def export_inventaire(inventaire: list, entrepot: str = "Bohicon"):
+    """Genere et renvoie le fichier Excel de l inventaire pour le terrain"""
+    excel_data = generer_export_stock(inventaire, entrepot)
+    headers = {
+        'Content-Disposition': f'attachment; filename="inventaire_{entrepot}.xlsx"'
+    }
+    return Response(
+        content=excel_data, 
+        headers=headers, 
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
 @app.get("/wms/wilson")
 def calcul_eoq(demande_annuelle: float, cout_commande: float, cout_stockage: float):
@@ -62,4 +93,5 @@ def maintenance_predictive(vibration: float, temperature: float):
     return {
         "machine_status": status,
         "recommandation": action
-          }
+}
+    
