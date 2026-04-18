@@ -1,4 +1,6 @@
+import pandas as pd
 from datetime import datetime
+import io
 
 def tri_stocks_fefo(inventaire):
     """
@@ -25,7 +27,7 @@ def appliquer_priorite_abc(donnees_abc, inventaire_trie):
     for article in inventaire_trie:
         article['priorite_abc'] = mapping_abc.get(article['id'], 'C')
         
-    # On remonte les articles de classe A qui arrivent a expiration
+    # On remonte les articles de classe A
     return sorted(inventaire_trie, key=lambda x: x['priorite_abc'])
 
 def alerte_peremption(inventaire, jours_limite=30):
@@ -46,3 +48,21 @@ def alerte_peremption(inventaire, jours_limite=30):
                 "niveau": "CRITIQUE" if jours_restants < 7 else "ATTENTION"
             })
     return alertes
+
+def generer_export_stock(inventaire_trie, nom_entrepot="Bohicon"):
+    """
+    Convertit l inventaire trie en un fichier Excel pret pour le telechargement.
+    """
+    df = pd.DataFrame(inventaire_trie)
+    
+    # Ajout d une colonne horodatage pour la tracabilite
+    df['date_extraction'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+    df['entrepot'] = nom_entrepot
+    
+    # Creation d un flux memoire pour le fichier Excel
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Etat_de_Stock')
+        
+    return output.getvalue()
+    
