@@ -11,6 +11,7 @@ from modules.wms.inventory_logic import (
     generer_export_stock,
     appliquer_priorite_abc
 )
+from modules.production.maintenance import detecter_anomalie_machine, calculer_oee
 
 app = FastAPI(title="Benin Smart Industry AI-ERP")
 
@@ -49,7 +50,6 @@ def post_analyse_abc(donnees_produits: list):
 
 @app.post("/wms/flux-fefo")
 def get_flux_fefo(inventaire: list, donnees_abc: list = None):
-    """Renvoie l inventaire trie par peremption avec priorite ABC optionnelle"""
     stock_trie = tri_stocks_fefo(inventaire)
     if donnees_abc:
         stock_trie = appliquer_priorite_abc(donnees_abc, stock_trie)
@@ -57,12 +57,10 @@ def get_flux_fefo(inventaire: list, donnees_abc: list = None):
 
 @app.post("/wms/alertes")
 def get_alertes_stock(inventaire: list, jours: int = 30):
-    """Liste les produits proches de la date de peremption"""
     return alerte_peremption(inventaire, jours)
 
 @app.post("/wms/export-excel")
 def export_inventaire(inventaire: list, entrepot: str = "Bohicon"):
-    """Genere et renvoie le fichier Excel de l inventaire pour le terrain"""
     excel_data = generer_export_stock(inventaire, entrepot)
     headers = {
         'Content-Disposition': f'attachment; filename="inventaire_{entrepot}.xlsx"'
@@ -83,8 +81,19 @@ def calcul_eoq(demande_annuelle: float, cout_commande: float, cout_stockage: flo
 
 # --- MODULE 3 : PRODUCTION ---
 
-@app.get("/production/maintenance")
-def maintenance_predictive(vibration: float, temperature: float):
+@app.post("/production/analyse-anomalies")
+def post_analyse_anomalies(donnees_capteurs: list):
+    """Detection d anomalies par IA (Isolation Forest)"""
+    return detecter_anomalie_machine(donnees_capteurs)
+
+@app.get("/production/calcul-trs")
+def get_trs(t_dispo: float, t_arret: float, p_totales: int, p_conformes: int):
+    """Calcul du Taux de Rendement Synthetique (OEE)"""
+    return calculer_oee(t_dispo, t_arret, p_totales, p_conformes)
+
+@app.get("/production/alerte-basique")
+def maintenance_basique(vibration: float, temperature: float):
+    """Analyse rapide par seuils critiques"""
     status = "Normal"
     action = "Continuer la production"
     if vibration > 0.8 or temperature > 75:
@@ -93,5 +102,5 @@ def maintenance_predictive(vibration: float, temperature: float):
     return {
         "machine_status": status,
         "recommandation": action
-}
+    }
     
