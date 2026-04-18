@@ -18,14 +18,19 @@ from modules.production.flux_manager import (
     gestion_flux_pousse_push, 
     gestion_flux_synchrone
 )
+# Nouveaux imports du Module 4
+from modules.tms.tracking import suivre_etape_livraison, estimer_temps_trajet
+from modules.tms.fuel_audit import audit_carburant
+from modules.tms.reverse_logistics import gestion_retours
 
 app = FastAPI(title="Benin Smart Industry AI-ERP")
 
 @app.get("/")
 def read_root():
-    return {"status": "Online", "system": "Smart Industry Benin", "version": "3.0"}
+    return {"status": "Online", "system": "Smart Industry Benin", "version": "4.0 Final"}
 
 # --- MODULE 1 : ACHATS & MARCHÉS ---
+# (Routes maintenues pour les Incoterms, Taxes et Appels d'Offres)
 
 @app.get("/achats/incoterms")
 def get_all_incoterms():
@@ -43,7 +48,8 @@ def get_comparatif(prix: float, fret: float, assurance: float, cat: int):
 def post_analyse_ao(document_text: str, budget: float):
     return scanner_ao(document_text, budget)
 
-# --- MODULE 2 : WMS (STOCKS, IA & LOGIQUE) ---
+# --- MODULE 2 : WMS (STOCKS & IA) ---
+# (Routes maintenues pour la Prévision IA, ABC et Export Excel)
 
 @app.post("/wms/prevision-demande")
 def post_prevision_stock(historique: list, futur: dict):
@@ -61,24 +67,14 @@ def get_flux_fefo(inventaire: list, donnees_abc: list = None):
         stock_trie = appliquer_priorite_abc(donnees_abc, stock_trie)
     return stock_trie
 
-@app.post("/wms/alertes")
-def get_alertes_stock(inventaire: list, jours: int = 30):
-    return alerte_peremption(inventaire, jours)
-
 @app.post("/wms/export-excel")
 def export_inventaire(inventaire: list, entrepot: str = "Bohicon"):
     excel_data = generer_export_stock(inventaire, entrepot)
     headers = {'Content-Disposition': f'attachment; filename="inventaire_{entrepot}.xlsx"'}
     return Response(content=excel_data, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-@app.get("/wms/wilson")
-def calcul_eoq(demande_annuelle: float, cout_commande: float, cout_stockage: float):
-    import math
-    if cout_stockage <= 0: return {"error": "Cout de stockage nul"}
-    q_opti = math.sqrt((2 * demande_annuelle * cout_commande) / cout_stockage)
-    return {"eoq": round(q_opti, 2)}
-
 # --- MODULE 3 : PRODUCTION & MAINTENANCE ---
+# (Routes maintenues pour les Anomalies IA, TRS et Flux)
 
 @app.post("/production/analyse-anomalies")
 def post_analyse_anomalies(donnees_capteurs: list):
@@ -90,16 +86,36 @@ def get_trs(t_dispo: float, t_arret: float, p_totales: int, p_conformes: int):
 
 @app.get("/production/cout-revient")
 def get_cout_revient(matiere: float, t_machine: float, taux_h: float, mo: float):
-    """Calcul du cout de revient complet incluant frais fixes"""
     return calculer_cout_revient(matiere, t_machine, taux_h, mo)
 
 @app.get("/production/flux-decision")
 def get_flux_decision(type_flux: str, demande: float, stock: float, capacite: float):
-    """Point d entree pour le simulateur de strategie (Push/Pull/Synchrone)"""
     if type_flux == "pull":
-        return gestion_flux_pull_jat(demande, stock, 1.5) # 1.5 min par unite par defaut
+        return gestion_flux_pull_jat(demande, stock, 1.5)
     elif type_flux == "push":
-        return gestion_flux_pousse_push(demande, 10, capacite) # Stock de securite de 10
-    else:
-        return gestion_flux_synchrone(demande, capacite)
+        return gestion_flux_pousse_push(demande, 10, capacite)
+    return gestion_flux_synchrone(demande, capacite)
+
+# --- MODULE 4 : TMS (TRANSPORT & LOGISTIQUE) ---
+# Nouvelles routes pour le transport et la livraison
+
+@app.get("/tms/audit-carburant")
+def get_fuel_audit(km: float, tonnes: float, litres: float):
+    """Analyse la rentabilité et la consommation du trajet"""
+    return audit_carburant(km, tonnes, litres)
+
+@app.get("/tms/suivi-livraison")
+def get_tracking(voyage_id: str, etape: str):
+    """Met à jour le statut du bordereau (Chargement, En route, etc.)"""
+    return suivre_etape_livraison(voyage_id, etape)
+
+@app.get("/tms/estimation-trajet")
+def get_estimation(ville: str):
+    """Donne la distance et le temps estimé depuis Glo-Djigbé"""
+    return estimer_temps_trajet(ville)
+
+@app.post("/tms/gestion-retours")
+def post_retours(id_bordereau: str, motif: str, etat: str):
+    """Décide du sort des marchandises retournées (Recyclage ou Stock)"""
+    return gestion_retours(id_bordereau, motif, etat)
     
