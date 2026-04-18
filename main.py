@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from core.incoterms import incoterms_data
 from modules.achat.tax_benin import calculer_fiscalite_benin
 from modules.achat.simulateur import comparer_offres_incoterms
+from modules.achat.ao_analyzer import scanner_ao
 
 app = FastAPI(title="Benin Smart Industry AI-ERP")
 
@@ -25,6 +26,11 @@ def simulation_taxe(valeur_cif: float, categorie: int):
 def get_comparatif(prix: float, fret: float, assurance: float, cat: int):
     """Compare financierement les scenarios d achat (CIF vs DDP)"""
     return comparer_offres_incoterms(prix, fret, assurance, cat)
+
+@app.post("/achats/analyser-ao")
+def post_analyse_ao(document_text: str, budget: float):
+    """Scan l appel d offres pour detecter risques et conformite"""
+    return scanner_ao(document_text, budget)
 
 # --- MODULE 2 : WMS (STOCKS) ---
 
