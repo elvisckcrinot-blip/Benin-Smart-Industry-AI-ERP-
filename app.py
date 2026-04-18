@@ -1,15 +1,24 @@
 import streamlit as st
-import requests
 import pandas as pd
 
-# 1. Configuration système
+# Importations des modules metiers selon votre structure
+try:
+    from core.incoterms import calculer_comparatif_incoterms
+    from modules.achat.tax_benin import calculer_taxes_cotonou
+    from modules.wms.inventory_logic import calcul_wilson_eoq
+    from modules.tms.fuel_audit import analyser_consommation
+except ImportError:
+    # Rappel si les fichiers sont encore vides ou __init__.py manquants
+    pass
+
+# Configuration de la page
 st.set_page_config(
-    page_title="SMART INDUSTRY AI-ERP",
+    page_title="SMART INDUSTRY ERP - SOLUTIONS LOGISTIQUES 4.0",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# 2. Design Industriel Épuré (Zéro référence externe)
+# Style Industriel Neutre
 st.markdown("""
     <style>
     .stApp { background-color: #F8FAFC; }
@@ -31,91 +40,66 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. Navigation
-st.sidebar.title("LOGISTICS ERP V4.5")
-menu = st.sidebar.radio(
-    "NAVIGATION SYSTÈME",
-    ["TABLEAU DE BORD", "ACHATS & INCOTERMS", "MARCHÉS & APPELS D'OFFRES", "GESTION DES STOCKS", "PRODUCTION (TRS)", "TRANSPORT (TMS)"]
+# Navigation
+st.sidebar.title("ERP INDUSTRIEL V5.0")
+module = st.sidebar.radio(
+    "SELECTIONNER UN MODULE",
+    ["1. ACHATS ET MARCHES", "2. WMS (STOCKS)", "3. PRODUCTION", "4. TMS (TRANSPORT)"]
 )
 
-API_URL = "http://127.0.0.1:8000"
-
-# --- LOGIQUE DES MODULES ---
-
-if menu == "TABLEAU DE BORD":
-    st.title("CENTRE DE PILOTAGE INDUSTRIEL")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("SYSTÈME", "OPÉRATIONNEL")
-    col2.metric("FLUX", "SYNCHRONISÉS")
-    col3.metric("ZONE", "BÉNIN / RÉGIONAL")
-    st.divider()
-    st.info("Plateforme d'optimisation de la Supply Chain et de la Production Intelligente.")
-
-elif menu == "ACHATS & INCOTERMS":
-    st.title("LOGISTIQUE INTERNATIONALE")
-    st.subheader("Calculateur de Valeur en Douane (Incoterms 2020)")
+# MODULE 1 : ACHATS ET MARCHES
+if module == "1. ACHATS ET MARCHES":
+    st.title("MODULE 1 : ACHATS ET MARCHES (SOURCING)")
+    tab1, tab2, tab3 = st.tabs(["ANALYSE APPELS D'OFFRES", "SIMULATEUR INCOTERMS", "TAXES ET DEDOUANEMENT"])
     
-    col1, col2 = st.columns(2)
-    with col1:
-        regle = st.selectbox("Incoterm de la Transaction", ["EXW", "FOB", "CFR", "CIF", "DAP", "DDP"])
-        p_achat = st.number_input("Montant Facture Fournisseur (FCFA)", value=1000000)
-    with col2:
-        fret_int = st.number_input("Transport International / Fret (FCFA)", value=300000)
-        assur_int = st.number_input("Assurance Transport (FCFA)", value=40000)
+    with tab1:
+        st.subheader("SCANNER DE DOCUMENTS (AO_ANALYZER)")
+        st.file_uploader("Importer le cahier des charges (DAO)", type=['pdf', 'txt'])
     
-    if st.button("DÉTERMINER LA VALEUR CIF"):
-        # Calcul de la base taxable selon la règle choisie
-        if regle == "EXW": cif = p_achat + fret_int + assur_int
-        elif regle in ["FOB", "CFR"]: cif = p_achat + assur_int if regle == "CFR" else p_achat + fret_int + assur_int
-        else: cif = p_achat # Simplification pour CIF/DAP/DDP
+    with tab2:
+        st.subheader("MOTEUR DE CALCUL MULTI-INCOTERMS")
+        col1, col2 = st.columns(2)
+        with col1:
+            famille = st.selectbox("Famille Incoterm", ["Groupe E (Depart)", "Groupe F", "Groupe C", "Groupe D"])
+            prix_base = st.number_input("Prix de base (FCFA)", value=10000000)
+        with col2:
+            fret = st.number_input("Fret estime (FCFA)", value=1500000)
+            assurance = st.number_input("Assurance (FCFA)", value=100000)
         
-        st.success(f"VALEUR CIF CALCULÉE : {cif} FCFA")
+        if st.button("GENERER LE TABLEAU COMPARATIF"):
+            st.info("Traitement via core/incoterms.py")
 
-elif menu == "MARCHÉS & APPELS D'OFFRES":
-    st.title("GESTION DES APPELS D'OFFRES")
-    st.subheader("Analyse de Dossier de Consultation (DAO)")
+    with tab3:
+        st.subheader("CALCULATEUR DE TAXES BENIN (PORT DE COTONOU)")
+        cif = st.number_input("Valeur CIF (FCFA)", value=12000000)
+        if st.button("CALCULER DROITS ET TAXES"):
+            st.info("Traitement via modules/achat/tax_benin.py")
+
+# MODULE 2 : WMS (STOCKS)
+elif module == "2. WMS (STOCKS)":
+    st.title("MODULE 2 : GESTION INTELLIGENTE DES STOCKS")
+    tab1, tab2, tab3 = st.tabs(["GESTION ABC / ALERTES", "PREVISION (IA)", "AJUSTEMENT DYNAMIQUE"])
     
-    file = st.file_uploader("Charger le cahier des charges", type=['pdf', 'txt'])
+    with tab2:
+        st.subheader("IA : ANTICIPATEUR DE DEMANDE (RANDOM FOREST)")
+        st.write("Analyse basee sur la saisonnalite du reseau Benin.")
+
+# MODULE 3 : PRODUCTION
+elif module == "3. PRODUCTION":
+    st.title("MODULE 3 : PRODUCTION (L'USINE)")
+    tab1, tab2, tab3 = st.tabs(["FLUX (JAT)", "MAINTENANCE PREDICTIVE", "RENTABILITE"])
+
+# MODULE 4 : TMS (TRANSPORT)
+elif module == "4. TMS (TRANSPORT)":
+    st.title("MODULE 4 : TMS - TRANSPORT ET LIVRAISON")
+    tab1, tab2, tab3 = st.tabs(["CHARGEMENT", "TRACKING (BENIN)", "AUDIT CARBURANT"])
     
-    if file:
-        st.warning("Analyse sémantique en cours...")
-        # Données simulées pour démonstration de structure
-        ao_summary = {
-            "Type de Marché": "Fourniture Industrielle",
-            "Échéance Soumission": "30 Jours",
-            "Cautionnement": "Requis",
-            "Zone de Livraison": "Plateforme Logistique"
-        }
-        st.table(pd.DataFrame([ao_summary]).T.rename(columns={0: "Points de Vigilance"}))
-
-elif menu == "GESTION DES STOCKS":
-    st.title("OPTIMISATION DES STOCKS")
-    st.subheader("Modèle Économique de Wilson")
-    dem = st.number_input("Demande Annuelle Prévue", value=5000)
-    c_p = st.number_input("Coût de Passation (Commande)", value=15000)
-    c_s = st.number_input("Coût de Stockage Unitaire", value=500)
-    
-    if st.button("CALCULER L'EOQ"):
-        try:
-            res = requests.get(f"{API_URL}/wms/wilson?demande_annuelle={dem}&cout_commande={c_p}&cout_stockage={c_s}").json()
-            st.metric("QUANTITÉ OPTIMALE DE COMMANDE", f"{res['eoq']} unités")
-        except:
-            st.error("Lien API interrompu.")
-
-elif menu == "PRODUCTION (TRS)":
-    st.title("PERFORMANCE INDUSTRIELLE")
-    t_disp = st.number_input("Temps d'Ouverture (H)", 8.0)
-    p_tot = st.number_input("Unités Produites", 1000)
-    if st.button("ANALYSER LE TRS"):
-        st.metric("TRS / OEE ACTUALISÉ", "89.5%")
-
-elif menu == "TRANSPORT (TMS)":
-    st.title("AUDIT ET SUIVI TRANSPORT")
-    km = st.number_input("Distance Parcourue (KM)", 415)
-    litres = st.number_input("Consommation Totale (L)", 150)
-    if st.button("GÉNÉRER LE RAPPORT D'AUDIT"):
-        st.success("Indice de performance énergétique optimal.")
+    with tab3:
+        st.subheader("AUDIT CONSOMMATION / TONNAGE")
+        st.number_input("Distance (KM)", value=415)
+        st.number_input("Tonnage (T)", value=25.0)
+        if st.button("VALIDER L'AUDIT"):
+            st.info("Traitement via modules/tms/fuel_audit.py")
 
 # Pied de page
-st.markdown('<div class="footer">CONCEPTION ET INGÉNIERIE : ELVIS CRINOT | EXPERT LOGISTIQUE & SUPPLY CHAIN</div>', unsafe_allow_html=True)
-        
+st.markdown('<div class="footer">CONCEPTION ET INGENIERIE : ELVIS CRINOT | SOLUTIONS LOGISTIQUES 4.0</div>', unsafe_allow_html=True)
