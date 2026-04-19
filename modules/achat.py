@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from utils import generate_pdf  # Importation de ta fonction centralisée
 
 def calculate_landed_cost(fob_price, freight, insurance, currency_rate, incoterm):
     """
@@ -68,7 +69,6 @@ def run_module():
     with tab2:
         st.subheader("Gestion des Transferts (Incoterms 2020)")
         
-        # --- NOUVELLE FONCTIONNALITÉ : SÉLECTION AUTOMATIQUE ---
         st.markdown("#### 🤖 Assistant de sélection automatique")
         col_auto1, col_auto2 = st.columns(2)
         with col_auto1:
@@ -82,9 +82,7 @@ def run_module():
         
         st.markdown("---")
         
-        # Liste exhaustive des 11 Incoterms 2020
         incoterm_list = ["EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"]
-        # On définit l'index par défaut selon la suggestion automatique
         default_index = incoterm_list.index(auto_incoterm)
         incoterm_selected = st.selectbox("Valider ou modifier l'Incoterm final", incoterm_list, index=default_index)
 
@@ -136,11 +134,37 @@ def run_module():
                 else:
                     res_col2.metric(label=key, value=f"{results[key]:,.0f} FCFA")
             
-            st.markdown("#### Section PDF d'exportation")
+            # --- GÉNÉRATION AUTOMATIQUE DU RAPPORT PDF ---
+            st.markdown("---")
+            st.subheader(" Documents à exporter")
+            
+            # Préparation des données pour la fonction centralisée dans utils.py
+            donnees_pdf = {
+                "Incoterm": incoterm_selected,
+                "Valeur Marchandise": f"{fob_val:,.0f}",
+                "Fret": f"{freight:,.0f} FCFA",
+                "Assurance": f"{insurance:,.0f} FCFA",
+                "Total Taxes": f"{results['Total Taxes']:,.0f} FCFA",
+                "COÛT DE REVIENT TOTAL": f"{results['Coût de Revient Total']:,.0f} FCFA"
+            }
+            
+            # Appel de la fonction de utils.py
+            pdf_binaire = generate_pdf(donnees_pdf, title=f"RAPPORT D'ACHAT - {incoterm_selected}")
+            
+            # Bouton de téléchargement PDF
+            st.download_button(
+                label="📥 Télécharger le Bon de Commande (PDF)",
+                data=pdf_binaire,
+                file_name=f"Bon_Commande_{incoterm_selected}.pdf",
+                mime="application/pdf"
+            )
+            
+            # Export CSV secondaire
             csv = pd.DataFrame([results]).to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="Exporter les données d'achat (CSV)",
+                label=" Exporter les données (CSV)",
                 data=csv,
                 file_name=f"rapport_achat_{incoterm_selected}.csv",
                 mime="text/csv"
-    )
+        )
+            
