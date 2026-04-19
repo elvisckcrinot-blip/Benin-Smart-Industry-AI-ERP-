@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import time
-from utils import generate_pdf  # Importation de la fonction centralisée
 
 def run_module():
     st.header("Module 03 : Pilotage de la Production & Maintenance 4.0")
@@ -35,6 +34,7 @@ def run_module():
             else:
                 st.info("Logique : Suppression totale des stocks intermédiaires (JIT).")
             
+            # Simulation de l'OEE (Rendement Global)
             st.markdown("#### Performance de la Ligne (OEE/TRS)")
             st.progress(0.82)
             st.caption("Taux de Rendement Synthétique actuel : 82%")
@@ -47,6 +47,7 @@ def run_module():
         
         with col_monitor1:
             st.markdown("#### État des Équipements (Condition Monitoring)")
+            # Simulation de données capteurs
             sensor_data = pd.DataFrame({
                 "Paramètre": ["Vibrations (mm/s)", "Température (°C)", "Pression (bar)", "Vitesse (tr/min)"],
                 "Valeur Actuelle": [2.4, 65.2, 12.1, 1450],
@@ -95,32 +96,9 @@ def run_module():
         st.markdown("---")
         st.markdown("#### Analyse des Bénéfices Attendus")
         b_col1, b_col2, b_col3 = st.columns(3)
-        trs_val = 82
         b_col1.metric("Réduction Coûts", "-30%", "Cible")
         b_col2.metric("Durée de Vie", "+15%", "Optimisé")
         b_col3.metric("Sécurité", "100%", "Zéro incident")
         
-        # --- LOGIQUE D'EXPORTATION PDF INTÉGRÉE ---
-        st.write("Générer le rapport complet de production :")
-        
-        # Préparation des données dynamiques pour le rapport
-        donnees_rapport = {
-            "Date du Rapport": "19/04/2026",
-            "Mode de Pilotage": mode_flux,
-            "Performance (TRS)": f"{trs_val}%",
-            "Statut Maintenance": "Optimale (Aucune anomalie)",
-            "BT en cours": "BT-001, BT-002",
-            "Alerte Pièces": "Roulement SKF-202 (Rupture imminente)"
-        }
-        
-        # Génération via la fonction centralisée dans utils.py
-        pdf_binaire = generate_pdf(donnees_rapport, title="RAPPORT DE PRODUCTION & MAINTENANCE 4.0")
-        
-        st.download_button(
-            label="📥 Exporter Rapport de Production & Maintenance (PDF)",
-            data=pdf_binaire,
-            file_name=f"Rapport_Production_{mode_flux}.pdf",
-            mime="application/pdf",
-            use_container_width=True
-            )
+        st.button("Exporter Rapport de Production & Maintenance (PDF)")
         
