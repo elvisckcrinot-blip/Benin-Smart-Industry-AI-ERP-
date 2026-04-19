@@ -1,15 +1,15 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils import generate_pdf  # Importation de ta fonction centralisée
+from utils import generate_pdf 
 
 def calculate_fuel_efficiency(distance, weight, fuel_price):
     """Calcule la rentabilité du carburant et le prix de revient du voyage."""
-    consumption_rate = 0.35  # Litres/km standard
+    consumption_rate = 0.35  
     load_factor = 1 + (weight / 40)
     total_fuel = distance * consumption_rate * load_factor
     fuel_cost = total_fuel * fuel_price
-    fixed_costs = 50000  # Chauffeur, entretien, amortissement
+    fixed_costs = 50000  
     total_trip_cost = fuel_cost + fixed_costs
     return round(total_trip_cost, 0), round(fuel_cost, 0)
 
@@ -55,26 +55,28 @@ def run_module():
             st.metric("Coût Total Estimé", f"{int(total):,} FCFA".replace(",", " "))
             st.metric("Budget Carburant", f"{int(fuel):,} FCFA".replace(",", " "))
             
-            rentabilite = st.progress(min(int((fuel/total)*100), 100))
+            rentabilite = st.progress(min(max(int((fuel/total)*100), 0), 100))
             st.caption(f"Le carburant représente {int((fuel/total)*100)}% du coût total.")
 
-        # --- AJOUT PDF RENTABILITÉ ---
         st.markdown("---")
-        if st.button("Générer Rapport de Rentabilité"):
-            donnees_voyage = {
-                "Axe": axe,
-                "Distance": f"{dist} km",
-                "Charge": f"{poids} tonnes",
-                "Budget Carburant": f"{int(fuel):,} FCFA",
-                "COUT TOTAL VOYAGE": f"{int(total):,} FCFA"
-            }
-            pdf_binaire = generate_pdf(donnees_voyage, title="ANALYSE DE RENTABILITE TRANSPORT")
-            st.download_button(
-                label="📥 Télécharger le Rapport (PDF)",
-                data=pdf_binaire,
-                file_name="Rapport_Rentabilite_TMS.pdf",
-                mime="application/pdf"
-            )
+        # CORRECTION : Le download_button doit être accessible directement
+        donnees_voyage = {
+            "Axe": axe,
+            "Distance": f"{dist} km",
+            "Charge": f"{poids} tonnes",
+            "Budget Carburant": f"{int(fuel):,} FCFA",
+            "COUT TOTAL VOYAGE": f"{int(total):,} FCFA"
+        }
+        
+        # On génère le PDF et on met le bouton de téléchargement directement
+        pdf_binaire = generate_pdf(donnees_voyage, title="ANALYSE DE RENTABILITE TRANSPORT")
+        st.download_button(
+            label="📥 Télécharger le Rapport de Rentabilité (PDF)",
+            data=pdf_binaire,
+            file_name="Rapport_Rentabilite_TMS.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
 
     # --- ONGLET 3 : GESTION DES QUAIS ---
     with tabs[2]:
@@ -96,19 +98,21 @@ def run_module():
         with col_r2:
             action = st.radio("Action Requise", ["Réparer", "Détruire", "Ré-intégrer"])
             
-        # --- AJOUT PDF BON DE RETOUR ---
-        if st.button("Générer Bon de Retour"):
-            donnees_retour = {
-                "Type Document": "BON DE RETOUR LOGISTIQUE",
-                "Motif": motif,
-                "Action Decision": action,
-                "Statut": "En attente de validation entrepôt"
-            }
-            pdf_retour = generate_pdf(donnees_retour, title="BON DE RETOUR - LOGISTIQUE INVERSE")
-            st.download_button(
-                label="📥 Télécharger le Bon de Retour (PDF)",
-                data=pdf_retour,
-                file_name="Bon_Retour_TMS.pdf",
-                mime="application/pdf"
-    )
+        st.markdown("---")
+        # CORRECTION : Idem ici, on sort le download_button du st.button
+        donnees_retour = {
+            "Type Document": "BON DE RETOUR LOGISTIQUE",
+            "Motif": motif,
+            "Action Decision": action,
+            "Statut": "En attente de validation"
+        }
+        
+        pdf_retour = generate_pdf(donnees_retour, title="BON DE RETOUR - LOGISTIQUE INVERSE")
+        st.download_button(
+            label="📥 Télécharger le Bon de Retour (PDF)",
+            data=pdf_retour,
+            file_name="Bon_Retour_TMS.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
         
