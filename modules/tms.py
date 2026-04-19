@@ -55,13 +55,11 @@ def run_module():
             st.metric("Coût Total Estimé", f"{int(total):,} FCFA".replace(",", " "))
             st.metric("Budget Carburant", f"{int(fuel):,} FCFA".replace(",", " "))
             
-            # Sécurité pour la barre de progression
-            ratio = min(max(int((fuel/total)*100), 0), 100)
-            st.progress(ratio)
-            st.caption(f"Le carburant représente {ratio}% du coût total.")
+            rentabilite = st.progress(min(max(int((fuel/total)*100), 0), 100))
+            st.caption(f"Le carburant représente {int((fuel/total)*100)}% du coût total.")
 
         st.markdown("---")
-        # LE BOUTON PDF EST ICI : ACCESSIBLE SANS CONDITION "IF"
+        # CORRECTION : Le download_button doit être accessible directement
         donnees_voyage = {
             "Axe": axe,
             "Distance": f"{dist} km",
@@ -69,12 +67,15 @@ def run_module():
             "Budget Carburant": f"{int(fuel):,} FCFA",
             "COUT TOTAL VOYAGE": f"{int(total):,} FCFA"
         }
+        
+        # On génère le PDF et on met le bouton de téléchargement directement
         pdf_binaire = generate_pdf(donnees_voyage, title="ANALYSE DE RENTABILITE TRANSPORT")
         st.download_button(
             label="📥 Télécharger le Rapport de Rentabilité (PDF)",
             data=pdf_binaire,
             file_name="Rapport_Rentabilite_TMS.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            use_container_width=True
         )
 
     # --- ONGLET 3 : GESTION DES QUAIS ---
@@ -98,18 +99,20 @@ def run_module():
             action = st.radio("Action Requise", ["Réparer", "Détruire", "Ré-intégrer"])
             
         st.markdown("---")
-        # LE BOUTON BON DE RETOUR EST ICI : ACCESSIBLE SANS CONDITION "IF"
+        # CORRECTION : Idem ici, on sort le download_button du st.button
         donnees_retour = {
             "Type Document": "BON DE RETOUR LOGISTIQUE",
             "Motif": motif,
             "Action Decision": action,
             "Statut": "En attente de validation"
         }
+        
         pdf_retour = generate_pdf(donnees_retour, title="BON DE RETOUR - LOGISTIQUE INVERSE")
         st.download_button(
             label="📥 Télécharger le Bon de Retour (PDF)",
             data=pdf_retour,
             file_name="Bon_Retour_TMS.pdf",
-            mime="application/pdf"
-    )
+            mime="application/pdf",
+            use_container_width=True
+            )
         
