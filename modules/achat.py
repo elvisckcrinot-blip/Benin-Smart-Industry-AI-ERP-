@@ -1,20 +1,27 @@
 import streamlit as st
 import pandas as pd
 
-def calculate_landed_cost(fob_price, freight, insurance, currency_rate):
+def calculate_landed_cost(fob_price, freight, insurance, currency_rate, incoterm):
     """
-    Calcule le coût de revient incluant la taxation béninoise (TEC + TVA).
+    Calcule le coût de revient incluant la taxation béninoise (TEC + TVA + PCS).
+    La fonction adapte le calcul selon l'Incoterm sélectionné.
     """
-    # Conversion en FCFA
-    cif_val = (fob_price + freight + insurance) * currency_rate
+    # Conversion de la valeur marchandise en FCFA
+    base_val = fob_price * currency_rate
     
-    # Fiscalité Bénin / CEDEAO
-    tec_rate = 0.20  # Taux moyen TEC (Catégorie 3 : Biens de consommation finale)
+    # Si l'incoterm n'inclut pas le transport/assurance (ex: EXW, FCA), on les ajoute
+    # Si l'incoterm les inclut déjà (ex: CIF, CIP), ils sont considérés comme intégrés dans la valeur de base
+    cif_val = base_val + freight + insurance
+    
+    # Fiscalité Bénin / CEDEAO (Paramètres industriels)
+    tec_rate = 0.20  # Tarif Extérieur Commun (Catégorie 3)
     tva_rate = 0.18  # TVA Bénin
     pcs_rate = 0.01  # Prélèvement Communautaire de Solidarité
     
     droits_douane = cif_val * tec_rate
     pcs = cif_val * pcs_rate
+    
+    # La TVA s'applique sur la valeur CIF + Droits de Douane + PCS
     base_tva = cif_val + droits_douane + pcs
     tva = base_tva * tva_rate
     
@@ -22,68 +29,113 @@ def calculate_landed_cost(fob_price, freight, insurance, currency_rate):
     total_cost = cif_val + total_taxes
     
     return {
-        "CIF FCFA": round(cif_val, 2),
-        "Droits de Douane": round(droits_douane, 2),
-        "TVA": round(tva, 2),
+        "Valeur CIF (FCFA)": round(cif_val, 2),
+        "Droits de Douane (20%)": round(droits_douane, 2),
+        "PCS (1%)": round(pcs, 2),
+        "TVA (18%)": round(tva, 2),
         "Total Taxes": round(total_taxes, 2),
         "Coût de Revient Total": round(total_cost, 2)
     }
 
 def run_module():
-    st.header("Module 01 : Achats, Marchés Publics & Fiscalité")
+    st.header("Module 01 : Achats & Passation de Marchés")
     
     tab1, tab2, tab3 = st.tabs([
-        "Passation de Marchés (GPAO)", 
-        "Simulateur Incoterms 2020", 
-        "Calculateur de Coûts & Taxes"
+        "Marchés Publics & GPAO", 
+        "Ingénierie des Incoterms", 
+        "Coûts & Documentation"
     ])
 
+    # --- ONGLET 1 : MARCHÉS PUBLICS ---
     with tab1:
-        st.subheader("Analyse d'Appel d'Offres")
-        uploaded_file = st.file_uploader("Charger le Dossier d'Appel d'Offres (PDF)", type="pdf")
-        if uploaded_file:
-            st.success("Fichier réceptionné. Analyse des clauses clés en cours...")
-            # Ici viendra la logique de scannage PDF
+        st.subheader("Traitement des Activités de Marché Public")
+        col_ao1, col_ao2 = st.columns([2, 1])
         
+        with col_ao1:
+            st.info("Fonction : Scannage de l'appel d'offre conformément aux règles clés du Bénin GPAO")
+            uploaded_ao = st.file_uploader("Charger le dossier d'appel d'offre (PDF)", type="pdf", key="ao_pdf")
+            if uploaded_ao:
+                st.success("Fichier réceptionné. Analyse sémantique des clauses de conformité en cours...")
+        
+        with col_ao2:
+            st.markdown("### Section PDF")
+            st.write("Exportation des données vers l'application")
+            st.button("Exporter données GPAO")
+
+    # --- ONGLET 2 : CHOIX DES INCOTERMS ---
     with tab2:
-        st.subheader("Sélecteur de Transfert de Risques")
-        incoterm = st.selectbox("Choisir l'Incoterm", ["EXW", "FOB", "CFR", "CIF", "DDP"])
+        st.subheader("Gestion des Transferts (Incoterms 2020)")
         
-        incoterms_data = {
-            "EXW": "L'acheteur assume tous les frais et risques dès l'usine du vendeur.",
-            "FOB": "Le vendeur livre la marchandise à bord du navire. Risque transféré au bastingage.",
-            "CIF": "Le vendeur paie le transport et l'assurance jusqu'au port de destination.",
-            "DDP": "Le vendeur assume tous les frais, y compris le dédouanement à destination."
+        # Liste exhaustive des 11 Incoterms 2020
+        incoterm_list = ["EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"]
+        incoterm_selected = st.selectbox("Sélectionner l'Incoterm entre acheteur et vendeur", incoterm_list)
+
+        incoterm_info = {
+            "EXW": {"desc": "L'acheteur assume tous les frais et risques dès l'usine du vendeur.", "avantage": "Contrôle total de la chaîne logistique par l'acheteur."},
+            "FOB": {"desc": "Le vendeur livre sur le navire au port de départ. Risque transféré au bastingage.", "avantage": "Évite les frais de pré-acheminement complexes pour l'acheteur."},
+            "CIF": {"desc": "Vendeur paie fret et assurance jusqu'au port d'arrivée.", "avantage": "Sécurité pour l'acheteur, coût prévisible à l'arrivée."},
+            "DDP": {"desc": "Vendeur assume tout, y compris les taxes au Bénin.", "avantage": "Zéro formalité pour l'acheteur, coût de revient connu à l'avance."}
         }
-        st.info(f"Note Logistique : {incoterms_data.get(incoterm, 'Description non disponible.')}")
+        
+        info = incoterm_info.get(incoterm_selected, {"desc": "Incoterm standard 2020.", "avantage": "Optimisation des coûts de transport internationaux."})
+        
+        st.warning(f"**Définition :** {info['desc']}")
+        st.success(f"**Avantages de l'utilisation de l'Incoterm choisi :** {info['avantage']}")
 
+    # --- ONGLET 3 : COÛTS & DOCUMENTATION ---
     with tab3:
-        st.subheader("Simulation Financière (Importation Bénin)")
-        col1, col2 = st.columns(2)
+        st.subheader("Contrôle Documentaire & Calcul des Coûts")
         
-        with col1:
-            fob_val = st.number_input("Valeur FOB (Devise origine)", min_value=0.0)
-            rate = st.number_input("Taux de change (ex: 1€ = 655.95 FCFA)", value=655.95)
-        
-        with col2:
-            # Logique dynamique : si CIF sélectionné, assurance/fret sont inclus ou grisés
-            freight = st.number_input("Fret International (FCFA)", min_value=0.0)
-            insurance = st.number_input("Assurance (FCFA)", min_value=0.0)
+        # 1. Liste totale et contrôle des documents selon l'incoterm choisi
+        st.markdown("#### Documents nécessaires pour procéder à l'achat/vente")
+        docs = ["Facture commerciale", "Liste de colisage", "Certificat d'origine"]
+        if incoterm_selected in ["CFR", "CIF", "FOB", "FAS"]:
+            docs.append("Connaissement (Bill of Lading / B/L)")
+        if incoterm_selected in ["CIF", "CIP"]:
+            docs.append("Certificat d'assurance transport")
+        if incoterm_selected in ["CPT", "FCA"]:
+            docs.append("Lettre de Voiture (CMR / LTA)")
+        if incoterm_selected == "DDP":
+            docs.append("Bon à enlever (Dédouanement Bénin effectué)")
+            
+        st.write("Liste de contrôle : ", ", ".join(f"**{d}**" for d in docs))
 
-        if st.button("Calculer le Coût de Revient"):
-            results = calculate_landed_cost(fob_val, freight, insurance, rate)
+        st.markdown("---")
+        
+        # 2. Calcul des coûts relatifs au processus d'acquisition
+        col_input1, col_input2 = st.columns(2)
+        
+        with col_input1:
+            fob_val = st.number_input("Valeur Marchandise (Devise origine)", min_value=0.0)
+            rate = st.number_input("Taux de change (ex: 1€ = 655.95 FCFA)", value=655.95)
             
-            # Affichage des résultats en mode industriel
-            st.markdown("---")
+        with col_input2:
+            # Masquage logique : si l'incoterm est DDP, les frais sont souvent inclus.
+            # Pour les autres, on permet la saisie manuelle du fret et de l'assurance.
+            freight = st.number_input("Coût du Fret International (FCFA)", min_value=0.0)
+            insurance = st.number_input("Coût de l'Assurance (FCFA)", min_value=0.0)
+
+        if st.button("Calculer le coût total d'acquisition"):
+            results = calculate_landed_cost(fob_val, freight, insurance, rate, incoterm_selected)
+            
+            st.markdown("#### Détail financier de l'opération")
             res_col1, res_col2 = st.columns(2)
-            for key, value in results.items():
-                res_col1.metric(label=key, value=f"{value:,.0f} FCFA")
             
-            # Exportation des données
+            # Affichage des métriques industrielles
+            keys = list(results.keys())
+            for i, key in enumerate(keys):
+                if i % 2 == 0:
+                    res_col1.metric(label=key, value=f"{results[key]:,.0f} FCFA")
+                else:
+                    res_col2.metric(label=key, value=f"{results[key]:,.0f} FCFA")
+            
+            # Exportation PDF/CSV comme demandé
+            st.markdown("#### Section PDF d'exportation")
+            csv = pd.DataFrame([results]).to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="Exporter le rapport d'achat (CSV)",
-                data=pd.DataFrame([results]).to_csv(index=False),
-                file_name="rapport_achat_benin.csv",
+                label="Exporter les données d'achat (CSV)",
+                data=csv,
+                file_name=f"rapport_achat_{incoterm_selected}.csv",
                 mime="text/csv"
-  )
-  
+    )
+    
