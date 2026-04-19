@@ -34,7 +34,6 @@ def run_module():
             else:
                 st.info("Logique : Suppression totale des stocks intermédiaires (JIT).")
             
-            # Simulation de l'OEE (Rendement Global)
             st.markdown("#### Performance de la Ligne (OEE/TRS)")
             st.progress(0.82)
             st.caption("Taux de Rendement Synthétique actuel : 82%")
@@ -47,7 +46,6 @@ def run_module():
         
         with col_monitor1:
             st.markdown("#### État des Équipements (Condition Monitoring)")
-            # Simulation de données capteurs
             sensor_data = pd.DataFrame({
                 "Paramètre": ["Vibrations (mm/s)", "Température (°C)", "Pression (bar)", "Vitesse (tr/min)"],
                 "Valeur Actuelle": [2.4, 65.2, 12.1, 1450],
@@ -82,14 +80,24 @@ def run_module():
                 "ID": ["BT-001", "BT-002"],
                 "Machine": ["Presse-04", "Convoyeur-A"],
                 "Type": ["Préventif", "IA-Prédictif"],
+                "Priorité": ["Haute", "Moyenne"],
                 "Date Prévue": ["2026-04-20", "2026-05-02"]
             })
-            st.dataframe(interventions)
-            st.button("Générer nouveaux bons de travail")
+            st.dataframe(interventions, use_container_width=True)
+            
+            # Export CSV des Bons de Travail
+            csv_bt = interventions.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Exporter les Bons de Travail (CSV)",
+                data=csv_bt,
+                file_name=f"Bons_de_Travail_{time.strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
         with col_plan2:
             st.markdown("#### Stock des Pièces de Rechange")
-            st.warning("Alerte IA : Commande automatique à lancer pour 'Roulement SKF-202' (Maintenance prévue J-15).")
+            st.warning("Alerte IA : Commande automatique à lancer pour 'Roulement SKF-202'.")
             st.write("Disponibilité magasin : **Rupture imminente**")
             st.button("Valider la commande automatique")
 
@@ -100,5 +108,18 @@ def run_module():
         b_col2.metric("Durée de Vie", "+15%", "Optimisé")
         b_col3.metric("Sécurité", "100%", "Zéro incident")
         
-        st.button("Exporter Rapport de Production & Maintenance (PDF)")
+        # Export CSV du Rapport Global
+        export_df = pd.DataFrame({
+            "Indicateur": ["Réduction Coûts", "Durée de Vie", "Sécurité", "OEE Actuel", "Mode de Flux"],
+            "Valeur": ["-30%", "+15%", "100%", "82%", mode_flux]
+        })
+        csv_global = export_df.to_csv(index=False).encode('utf-8')
         
+        st.download_button(
+            label="📊 Exporter Rapport de Production & Maintenance (CSV)",
+            data=csv_global,
+            file_name=f"Rapport_Global_Production_{time.strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True
+                )
+            
