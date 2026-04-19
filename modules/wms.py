@@ -25,9 +25,7 @@ def run_module():
         
         with col_abc1:
             st.info("Analyse de la rentabilité financière des stocks par classe (A, B, C)")
-            uploaded_abc = st.file_uploader("Charger les données d'inventaire (CSV/Excel)", type=["csv", "xlsx"], key="abc_data")
-            
-            # Simulation de données si aucun fichier n'est chargé
+            # Simulation de données
             data = pd.DataFrame({
                 'Article': ['Acier-H1', 'Acier-H2', 'Bobine-V1', 'Peinture-Ind', 'Solvant-X'],
                 'Consommation_Annuelle': [5000, 3000, 1000, 500, 100],
@@ -36,7 +34,8 @@ def run_module():
             data['Valeur_Totale'] = data['Consommation_Annuelle'] * data['Prix_Unitaire']
             
             st.write("Aperçu de la segmentation actuelle :")
-            st.dataframe(data.style.highlight_max(axis=0, subset=['Valeur_Totale']))
+            # Utilisation de dataframe pour la stabilité mobile
+            st.dataframe(data.style.highlight_max(axis=0, subset=['Valeur_Totale']), use_container_width=True)
 
         with col_abc2:
             st.markdown("### Contrôle Taux de Service")
@@ -64,13 +63,14 @@ def run_module():
             'Statut': ['CRITIQUE', 'ATTENTION']
         })
         
+        # CORRECTION ICI : Remplacement de applymap par map (Compatibilité Pandas 2.x)
         def color_status(val):
             color = 'red' if val == 'CRITIQUE' else 'orange'
             return f'color: {color}; font-weight: bold'
 
-        st.table(fefo_data.style.applymap(color_status, subset=['Statut']))
+        # On utilise st.dataframe pour éviter les erreurs de rendu de st.table sur mobile
+        st.dataframe(fefo_data.style.map(color_status, subset=['Statut']), use_container_width=True)
         
-        st.file_uploader("Importer flux de sortie pour mise à jour", type="pdf", key="fefo_pdf")
         st.button("Générer Bon de Commande Automatique")
 
     # --- ONGLET 3 : EOQ & IA RANDOM FOREST ---
@@ -82,27 +82,23 @@ def run_module():
         with col_ia1:
             st.markdown("#### Calculateur EOQ (Wilson)")
             demand = st.number_input("Demande annuelle estimée", value=12000)
-            c_order = st.number_input("Coût de passation d'une commande (FCFA)", value=5000)
+            c_order = st.number_input("Coût de passation (FCFA)", value=5000)
             c_holding = st.slider("Taux de possession annuel (%)", 5, 30, 15) / 100
-            price = st.number_input("Prix unitaire de l'article (FCFA)", value=25000)
+            price = st.number_input("Prix unitaire (FCFA)", value=25000)
             
             val_eoq = calculate_eoq(demand, c_order, c_holding, price)
             st.metric("Quantité Économique (EOQ)", f"{val_eoq} unités")
 
         with col_ia2:
             st.markdown("#### Prédiction IA (Random Forest)")
-            st.write("Modèle : `stock_prediction_v4.joblib` chargé.")
-            
             # Simulation de prédiction mensuelle
             mois = ["Janv", "Fév", "Mars", "Avril", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"]
             predictions = np.random.normal(1000, 150, 12).astype(int)
-            pred_df = pd.DataFrame({"Mois": mois, "Prédiction Quantité": predictions})
+            pred_df = pd.DataFrame({"Mois": mois, "Prédiction": predictions})
             
             st.line_chart(pred_df.set_index("Mois"))
-            st.write("Prédiction pour le mois prochain : **", predictions[4], " unités**")
+            st.write(f"Prédiction pour Mai : **{predictions[4]} unités**")
 
         st.markdown("---")
-        st.markdown("#### Section Exportation & Intégration")
-        st.write("Ajouter une section PDF pour l'export des prédictions IA vers la direction.")
         st.button("Exporter Rapport IA & EOQ (PDF)")
-          
+            
