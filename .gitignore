@@ -1,10 +1,23 @@
+# Python
 __pycache__/
 *.py[cod]
-.venv
+*$py.class
 venv/
 .env
-*.joblib
-*.pkl
+
+# Streamlit
+.streamlit/config.toml
+.streamlit/credentials.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data & IA (Éviter d'uploader des datasets lourds ou des logs)
 data/*.csv
 data/*.xlsx
-.streamlit/
+*.log
+
+# Dossiers d'environnement virtuel
+env/
+.venv/
