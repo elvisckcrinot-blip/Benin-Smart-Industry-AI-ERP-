@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import time
 
 def calculate_eoq(annual_demand, order_cost, holding_cost_rate, unit_price):
     """Calcul de la Quantité Économique de Commande (Formule de Wilson)."""
@@ -22,7 +23,6 @@ def run_module():
     with tab1:
         st.subheader("Système de Gestion de Stock ABC")
         
-        # Données de simulation
         data = pd.DataFrame({
             'Article': ['Acier-H1', 'Acier-H2', 'Bobine-V1', 'Peinture-Ind', 'Solvant-X'],
             'Consommation_Annuelle': [5000, 3000, 1000, 500, 100],
@@ -30,7 +30,6 @@ def run_module():
         })
         data['Valeur_Totale'] = data['Consommation_Annuelle'] * data['Prix_Unitaire']
         
-        # AFFICHAGE SIMPLE SANS STYLE (Zéro erreur garantie)
         st.write("Analyse de la rentabilité financière :")
         st.dataframe(data, use_container_width=True)
 
@@ -45,7 +44,6 @@ def run_module():
     with tab2:
         st.subheader("Monitoring des Niveaux de Stock")
         
-        # Indicateurs visuels (Metrics sont très stables sur mobile)
         m1, m2, m3 = st.columns(3)
         m1.metric("Stock Optimal", "85%", "+2%")
         m2.metric("Stock Moyen", "12%", "-1%")
@@ -60,11 +58,17 @@ def run_module():
             'Priorité': ['🔴 CRITIQUE', '🟠 ATTENTION']
         })
         
-        # On affiche le statut avec des emojis directement dans le texte au lieu du CSS
         st.table(fefo_data)
         
-        if st.button("Générer Bon de Commande Automatique"):
-            st.success("Bon de commande envoyé aux Achats.")
+        # --- REMPLACEMENT BON DE COMMANDE PAR EXPORT CSV ---
+        csv_bc = fefo_data.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Générer Bon de Commande Automatique (CSV)",
+            data=csv_bc,
+            file_name=f"Bon_Commande_WMS_{time.strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
 
     # --- ONGLET 3 : EOQ & IA ---
     with tab3:
@@ -91,5 +95,20 @@ def run_module():
             st.line_chart(pred_df.set_index("Mois"))
             st.write(f"Prévision Mai : **{preds[4]} unités**")
 
-        st.button("Exporter Rapport IA & EOQ (PDF)", use_container_width=True)
+        st.markdown("---")
+        # --- REMPLACEMENT RAPPORT PDF PAR EXPORT CSV ---
+        # Regroupement des prédictions IA et EOQ pour l'export
+        export_ia_df = pd.DataFrame({
+            "Indicateur": ["EOQ Calculé", "Prévision Mai", "Coût Passation", "Taux Possession"],
+            "Valeur": [val_eoq, preds[4], c_order, c_holding]
+        })
+        
+        csv_ia = export_ia_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📊 Exporter Rapport IA & EOQ (CSV)",
+            data=csv_ia,
+            file_name=f"Rapport_IA_EOQ_{time.strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
         
