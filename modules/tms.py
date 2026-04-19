@@ -3,22 +3,37 @@ import pandas as pd
 import numpy as np
 import time
 
-def calculate_fuel_efficiency(distance, weight, fuel_price):
-    """Calcule la rentabilité du carburant et le prix de revient du voyage."""
-    consumption_rate = 0.35  # Litres/km standard
+def calculate_tms_metrics(distance, weight, fuel_price, margin_percent):
+    """Calcul complet des coûts, du prix de vente et du bénéfice."""
+    # Coûts Variables (Carburant)
+    consumption_rate = 0.35  
     load_factor = 1 + (weight / 40)
-    total_fuel = distance * consumption_rate * load_factor
-    fuel_cost = total_fuel * fuel_price
-    fixed_costs = 50000  # Chauffeur, entretien, amortissement
-    total_trip_cost = fuel_cost + fixed_costs
-    return round(total_trip_cost, 0), round(fuel_cost, 0)
+    total_fuel_qty = distance * consumption_rate * load_factor
+    fuel_cost = round(total_fuel_qty * fuel_price, 0)
+    
+    # Coûts Fixes (Détail industriel : Chauffeur, Entretien, Assurance)
+    fixed_costs = 50000  
+    
+    # Coût de revient total
+    total_cost = fuel_cost + fixed_costs
+    
+    # Calcul du Prix de Vente (Méthode du taux de marge)
+    if margin_percent < 100:
+        selling_price = round(total_cost / (1 - (margin_percent / 100)), 0)
+    else:
+        selling_price = total_cost
+        
+    benefit = selling_price - total_cost
+    
+    return total_cost, fuel_cost, fixed_costs, selling_price, benefit
 
 def run_module():
     st.header("Module 04 : Transport Management System (TMS)")
     
+    # Structure à 4 onglets basée sur tes captures et ton code
     tabs = st.tabs([
         "Planification RNIE", 
-        "Calcul de Rentabilité", 
+        "Rentabilité & Marge", 
         "Gestion des Quais", 
         "Logistique Inverse"
     ])
@@ -41,38 +56,58 @@ def run_module():
         })
         st.dataframe(tracking_data, use_container_width=True)
 
-    # --- ONGLET 2 : RENTABILITÉ CARBURANT ---
+    # --- ONGLET 2 : RENTABILITÉ & MARGE (Version Optimisée) ---
     with tabs[1]:
-        st.subheader("Analyse de Coût au Voyage")
-        col1, col2 = st.columns(2)
-        with col1:
+        st.subheader("Analyse de Rentabilité Avancée")
+        
+        col_in, col_res = st.columns([1, 1.2])
+        
+        with col_in:
+            st.markdown("#### 1. Paramètres du Voyage")
             dist = st.number_input("Distance (km)", value=130, step=10)
-            poids = st.number_input("Poids total (tonnes)", value=20.0, step=1.0)
+            poids = st.number_input("Poids (tonnes)", value=20.0)
             prix_l = st.number_input("Prix Gasoil (FCFA/L)", value=700)
             
-        with col2:
-            total, fuel = calculate_fuel_efficiency(dist, poids, prix_l)
-            st.metric("Coût Total Estimé", f"{int(total):,} FCFA".replace(",", " "))
-            st.metric("Budget Carburant", f"{int(fuel):,} FCFA".replace(",", " "))
+            st.markdown("---")
+            st.markdown("#### 2. Stratégie Commerciale")
+            marge_cible = st.select_slider(
+                "Marge bénéficiaire souhaitée (%)",
+                options=[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+                value=25
+            )
             
-            rent_val = min(max(int((fuel/total)*100), 0), 100)
-            st.progress(rent_val)
-            st.caption(f"Le carburant représente {rent_val}% du coût total.")
+        with col_res:
+            tc, fc, fix, sp, ben = calculate_tms_metrics(dist, poids, prix_l, marge_cible)
+            
+            st.markdown("#### 3. Résultat d'Exploitation")
+            st.metric("PRIX DE VENTE CONSEILLÉ", f"{int(sp):,} FCFA".replace(",", " "))
+            st.metric("BÉNÉFICE NET ESTIMÉ", f"{int(ben):,} FCFA".replace(",", " "), delta=f"{marge_cible}% de marge")
+            
+            with st.expander("🔎 Détail de la structure des coûts"):
+                st.write(f"**Coûts Fixes :** {int(fix):,} FCFA".replace(",", " "))
+                st.caption("(Chauffeur, Maintenance, Amortissement)")
+                st.write(f"**Coûts Variables (Gasoil) :** {int(fc):,} FCFA".replace(",", " "))
+                st.write(f"**COÛT DE REVIENT TOTAL :** {int(tc):,} FCFA".replace(",", " "))
 
         st.markdown("---")
-        # Export CSV pour la rentabilité
-        rent_df = pd.DataFrame([{
+        # Export CSV complet
+        export_data = pd.DataFrame([{
             "Axe": axe,
             "Distance_km": dist,
             "Charge_t": poids,
-            "Cout_Gasoil": fuel,
-            "Cout_Total": total
+            "Cout_Fixe": fix,
+            "Cout_Carburant": fc,
+            "Cout_Total": tc,
+            "Marge_Appliquee": f"{marge_cible}%",
+            "Prix_Vente": sp,
+            "Benefice_Net": ben
         }])
-        csv_rent = rent_df.to_csv(index=False).encode('utf-8')
+        
+        csv_tms = export_data.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📊 Exporter Analyse de Rentabilité (CSV)",
-            data=csv_rent,
-            file_name=f"Rentabilite_Transport_{time.strftime('%Y%m%d')}.csv",
+            label="📊 Exporter l'Analyse de Rentabilité (CSV)",
+            data=csv_tms,
+            file_name=f"Analyse_Marge_TMS_{time.strftime('%Y%m%d')}.csv",
             mime="text/csv",
             use_container_width=True
         )
@@ -98,13 +133,12 @@ def run_module():
             action = st.radio("Action Requise", ["Réparer", "Détruire", "Ré-intégrer"])
             
         st.markdown("---")
-        # Export CSV pour le Bon de Retour (Remplacement du PDF)
         retour_df = pd.DataFrame([{
             "Document": "BON DE RETOUR",
             "Date": time.strftime('%Y-%m-%d'),
             "Motif": motif,
             "Action_Requise": action,
-            "Statut": "En attente de traitement"
+            "Statut": "En attente"
         }])
         csv_retour = retour_df.to_csv(index=False).encode('utf-8')
         st.download_button(
