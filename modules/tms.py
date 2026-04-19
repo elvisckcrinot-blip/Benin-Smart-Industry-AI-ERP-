@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from utils import generate_pdf  # Importation de ta fonction centralisée
 
 def calculate_fuel_efficiency(distance, weight, fuel_price):
     """Calcule la rentabilité du carburant et le prix de revient du voyage."""
@@ -15,7 +16,6 @@ def calculate_fuel_efficiency(distance, weight, fuel_price):
 def run_module():
     st.header("Module 04 : Transport Management System (TMS)")
     
-    # Navigation par onglets simplifiée
     tabs = st.tabs([
         "Planification RNIE", 
         "Calcul de Rentabilité", 
@@ -26,8 +26,6 @@ def run_module():
     # --- ONGLET 1 : TRACKING & CORRIDORS ---
     with tabs[0]:
         st.subheader("Suivi des Flux sur les Axes RNIE")
-        
-        # Sélection simplifiée pour éviter les erreurs de saisie
         axe = st.selectbox("Sélectionner l'Axe Stratégique", [
             "RNIE 2 : Cotonou - Malanville (Nord)",
             "RNIE 1 : Cotonou - Hillacondji (Ouest)",
@@ -35,24 +33,20 @@ def run_module():
             "RNIE 3 : Dassa - Porga (Nord-Ouest)"
         ])
         
-        # Données de démo robustes
         tracking_data = pd.DataFrame({
             "Véhicule": ["CAM-001", "CAM-002", "CAM-003"],
             "Position": ["Bohicon", "Parakou", "Kandi"],
             "Statut": ["En circulation", "Arrêt technique", "Chargement"],
             "Charge": ["25t", "30t", "28t"]
         })
-        
-        # AFFICHAGE STABLE : st.dataframe est le plus fiable sur mobile
         st.dataframe(tracking_data, use_container_width=True)
 
     # --- ONGLET 2 : RENTABILITÉ CARBURANT ---
     with tabs[1]:
         st.subheader("Analyse de Coût au Voyage")
-        
         col1, col2 = st.columns(2)
         with col1:
-            dist = st.number_input("Distance (km)", value=130, step=10) # Cotonou-Bohicon par défaut
+            dist = st.number_input("Distance (km)", value=130, step=10)
             poids = st.number_input("Poids total (tonnes)", value=20.0, step=1.0)
             prix_l = st.number_input("Prix Gasoil (FCFA/L)", value=700)
             
@@ -64,10 +58,27 @@ def run_module():
             rentabilite = st.progress(min(int((fuel/total)*100), 100))
             st.caption(f"Le carburant représente {int((fuel/total)*100)}% du coût total.")
 
+        # --- AJOUT PDF RENTABILITÉ ---
+        st.markdown("---")
+        if st.button("Générer Rapport de Rentabilité"):
+            donnees_voyage = {
+                "Axe": axe,
+                "Distance": f"{dist} km",
+                "Charge": f"{poids} tonnes",
+                "Budget Carburant": f"{int(fuel):,} FCFA",
+                "COUT TOTAL VOYAGE": f"{int(total):,} FCFA"
+            }
+            pdf_binaire = generate_pdf(donnees_voyage, title="ANALYSE DE RENTABILITE TRANSPORT")
+            st.download_button(
+                label="📥 Télécharger le Rapport (PDF)",
+                data=pdf_binaire,
+                file_name="Rapport_Rentabilite_TMS.pdf",
+                mime="application/pdf"
+            )
+
     # --- ONGLET 3 : GESTION DES QUAIS ---
     with tabs[2]:
         st.subheader("Affectation des Camions (Docking)")
-        
         with st.expander("Enregistrer une nouvelle entrée/sortie"):
             m_id = st.text_input("Immatriculation", placeholder="Ex: BJ 1234")
             op = st.selectbox("Type d'opération", ["Chargement", "Déchargement"])
@@ -79,13 +90,25 @@ def run_module():
     # --- ONGLET 4 : LOGISTIQUE INVERSE ---
     with tabs[3]:
         st.subheader("Retours et Avaries")
-        
         col_r1, col_r2 = st.columns(2)
         with col_r1:
             motif = st.radio("Motif du Retour", ["Produit Endommagé", "Erreur Livraison", "Surplus"])
         with col_r2:
             action = st.radio("Action Requise", ["Réparer", "Détruire", "Ré-intégrer"])
             
+        # --- AJOUT PDF BON DE RETOUR ---
         if st.button("Générer Bon de Retour"):
-            st.info("Système prêt pour génération PDF.")
-    
+            donnees_retour = {
+                "Type Document": "BON DE RETOUR LOGISTIQUE",
+                "Motif": motif,
+                "Action Decision": action,
+                "Statut": "En attente de validation entrepôt"
+            }
+            pdf_retour = generate_pdf(donnees_retour, title="BON DE RETOUR - LOGISTIQUE INVERSE")
+            st.download_button(
+                label="📥 Télécharger le Bon de Retour (PDF)",
+                data=pdf_retour,
+                file_name="Bon_Retour_TMS.pdf",
+                mime="application/pdf"
+    )
+        
